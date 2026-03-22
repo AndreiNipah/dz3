@@ -31,6 +31,7 @@ import com.example.dz3.model.Country
 import com.example.dz3.ui.viewmodel.CountriesUiState
 import com.example.dz3.ui.viewmodel.SearchUiState
 import com.example.dz3.ui.widget.CountryCard
+import androidx.compose.material.icons.outlined.History
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,6 +41,7 @@ fun SearchScreen(
     onRefresh: () -> Unit,
     onOpenDetails: (Country) -> Unit,
     onOpenFavourites: () -> Unit,
+    onOpenHistory: () -> Unit,
     onToggleFavourite: (Country) -> Unit,
 ) {
     Scaffold(
@@ -47,6 +49,9 @@ fun SearchScreen(
             TopAppBar(
                 title = { Text("Countries Explorer") },
                 actions = {
+                    IconButton(onClick = onOpenHistory) {
+                        Icon(Icons.Outlined.History, contentDescription = "History")
+                    }
                     IconButton(onClick = onOpenFavourites) {
                         Icon(Icons.Outlined.Favorite, contentDescription = "Favourites")
                     }

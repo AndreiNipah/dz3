@@ -100,10 +100,19 @@ fun CountryDetailsScreen(
 
                 is DetailsUiState.Error -> {
                     item {
-                        Text(
-                            text = detailsState.message,
-                            color = MaterialTheme.colorScheme.error
-                        )
+                        androidx.compose.foundation.layout.Column(
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = detailsState.message,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            androidx.compose.material3.Button(
+                                onClick = onLoad
+                            ) {
+                                Text("Retry")
+                            }
+                        }
                     }
                 }
 
