@@ -3,15 +3,31 @@
 Я выбрал API REST Contries. Это публичный REST-сервис, который предоставляет информацию о странах мира. С его помощью можно получить список всех стран, выполнить поиск страны по названию или коду, а также загрузить подробную информацию о конкретной стране.
 
 API не требует ключа, авторизация и дополнительные настройки не нужны, базовый URL: https://restcountries.com/v3.1/
+Однако в связи с тем, что API размещен, работает или защищается на инфраструктуре облачного сервиса Cloudflare, доступ к нему в настоящее время проблематичен без использования VPN. Во время моего использования приложения приходилось использовать следующий алгоритм: нажать Refresh/Retry с отключённым VPN, после появления ошибки timeout включить VPN и снова нажать Refresh/Retry, после чего список стран загружается.
 
-Чек-лист:
+В приложении используется локальная база данных Room с двумя таблицами:
+1) favourite_countries, в которой хранятся избранные страны. Поля: code, name, capital, region, flagUrl, population;
+Сценарий: на главном экране со списком стран пользователь нажимает на значок с сердечком справа от карточки со страной. Страна отображается в БД, и пользователь сможет её увидеть, если перейдёт на экран Favourites путём нажатия на кнопку с сердечком вправой верхней части экрана. По необходимости пользователь может удалить страну из Favourites повторным нажатием на кнопку у карточки страны.
+2) history_countries, в ней же хранится история просмотров стран. Поля: code, name, capital, region, flagUrl, population, viewedAt.
+Сценарий: пользователь открывает карточку страны с деталями. Страна автоматически сохраняется в историю, которую пользователь может посмотреть при помощи соответствуюшего экрана History, на который можно перейти нажатием кнопки рядом с Favourites в верхней правой части экрана. По необходимости, на экране History можно очистить историю, нажав на значок мусорного бака в правом верхнем углу экрана
 
-Из обязательного: Navigation Compose (Search / Detail / Favourites), список + детали через REST Countries API, ViewModel + UiState, stateless UI (state + callbacks), Repository между ViewModel и Retrofit, Coroutines + Retrofit (suspend + viewModelScope), UI-состояния Loading / Error (с Retry) / Empty / Success, избранное локально без БД (хранится в ViewModel), Compose + Material3.
+Короткий сценарий провери:
+1) Найти приложение через поиск
+2) Добавить её в избранное, нажав на сердечко
+3) Открыть карточку с деталями о стране
+4) Перезапустить приложение
+5) Перейти в Favourites - страна должна остаться
+6) Перейти в History - страна должна остаться
 
-Из бонусов: debounce поиска без Flow (Job + delay), кнопка Refresh, экран Favourites как отдельный route, кэш последнего результата в памяти, логирование запросов через OkHttp.
+
+
+
+<img width="349" height="753" alt="изображение" src="https://github.com/user-attachments/assets/11b771d1-2cf4-4eef-a9b4-7c67a77ae308" />
+<img width="342" height="752" alt="изображение" src="https://github.com/user-attachments/assets/6339193b-8601-4f59-b6b7-c4fcd5250bc1" />
 
 <img width="337" height="626" alt="изображение" src="https://github.com/user-attachments/assets/2d973d72-f76d-4aa6-bf0a-836f88241934" />
 <img width="335" height="615" alt="изображение" src="https://github.com/user-attachments/assets/87eab71f-62e2-4430-8443-8fec989cbd30" />
 <img width="340" height="635" alt="изображение" src="https://github.com/user-attachments/assets/77a0d444-b740-4f3a-8edd-6928867c0cec" />
-<img width="335" height="628" alt="изображение" src="https://github.com/user-attachments/assets/1b5a6f60-491c-4c51-bf11-115a44aefedd" />
+<img width="338" height="753" alt="изображение" src="https://github.com/user-attachments/assets/e25ed431-6e45-4076-bf03-b6cab028f737" />
+<img width="344" height="753" alt="изображение" src="https://github.com/user-attachments/assets/5222eccb-1e26-4cf3-8cc0-9d44b836281c" />
 

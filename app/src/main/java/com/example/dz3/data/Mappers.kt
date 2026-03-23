@@ -1,8 +1,54 @@
 package com.example.dz3.data
 
+import com.example.dz3.data.local.FavouriteCountryEntity
 import com.example.dz3.data.remote.CountryDto
 import com.example.dz3.model.Country
 import com.example.dz3.model.CountryDetails
+import com.example.dz3.data.local.HistoryCountryEntity
+
+fun Country.toHistoryEntity(viewedAt: Long): HistoryCountryEntity {
+    return HistoryCountryEntity(
+        code = code,
+        name = name,
+        capital = capital,
+        region = region,
+        flagUrl = flagUrl,
+        population = population,
+        viewedAt = viewedAt
+    )
+}
+
+fun HistoryCountryEntity.toCountry(): Country {
+    return Country(
+        code = code,
+        name = name,
+        capital = capital,
+        region = region,
+        flagUrl = flagUrl,
+        population = population
+    )
+}
+fun Country.toFavouriteEntity(): FavouriteCountryEntity {
+    return FavouriteCountryEntity(
+        code = code,
+        name = name,
+        capital = capital,
+        region = region,
+        flagUrl = flagUrl,
+        population = population
+    )
+}
+
+fun FavouriteCountryEntity.toCountry(): Country {
+    return Country(
+        code = code,
+        name = name,
+        capital = capital,
+        region = region,
+        flagUrl = flagUrl,
+        population = population
+    )
+}
 
 fun CountryDto.toCountryOrNull(): Country? {
     val code = cca3?.trim().orEmpty()
@@ -17,9 +63,9 @@ fun CountryDto.toCountryOrNull(): Country? {
         /*
         К Афганистану пришлось применить "костыль", так как на данный момент
         де-юре международно признанный и де-факто используемый в стране флаги отличаются.
-        А используемая в REST Contries ссылка на флаг Афганистан - единственная ссылка кривого формата,
-        ведущая на файл формата .svg.png на вики,
-        в связи с чем отображение деталей Афганистана ломалось
+        А используемая в REST Countries ссылка на флаг Афганистан — единственная ссылка
+        кривого формата, ведущая на файл формата .svg.png на вики,
+        в связи с чем отображение деталей Афганистана ломалось.
         */
     }
 

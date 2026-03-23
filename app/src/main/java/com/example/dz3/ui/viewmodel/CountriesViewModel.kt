@@ -8,6 +8,9 @@ import androidx.lifecycle.viewModelScope
 import com.example.dz3.data.CountriesRepository
 import com.example.dz3.model.Country
 import com.example.dz3.model.CountryDetails
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -30,11 +33,13 @@ data class CountriesUiState(
     val query: String = "",
     val search: SearchUiState = SearchUiState.Loading,
     val details: DetailsUiState = DetailsUiState.Idle,
-    val favourites: List<Country> = emptyList()
+    val favourites: List<Country> = emptyList(),
+    val history: List<Country> = emptyList()
 )
 
-class CountriesViewModel(
-    private val repository: CountriesRepository = CountriesRepository()
+@HiltViewModel
+class CountriesViewModel @Inject constructor(
+    private val repository: CountriesRepository
 ) : ViewModel() {
 
     companion object {
@@ -49,10 +54,31 @@ class CountriesViewModel(
 
     private var debounceJob: Job? = null
     private var requestJob: Job? = null
+    private var detailsJob: Job? = null
 
     init {
+        observeFavourites()
+        observeHistory()
         loadAll(forceNetwork = true)
     }
+
+    private fun observeFavourites() {
+        viewModelScope.launch {
+            repository.observeFavourites().collect { favourites ->
+                uiState = uiState.copy(favourites = favourites)
+            }
+        }
+    }
+
+    private fun observeHistory() {
+        viewModelScope.launch {
+            repository.observeHistory().collect { history ->
+                uiState = uiState.copy(history = history)
+            }
+        }
+    }
+
+
 
     fun updateSearchQuery(query: String) {
         uiState = uiState.copy(query = query)
@@ -89,11 +115,17 @@ class CountriesViewModel(
             try {
                 val results = repository.searchByName(q)
                 uiState = uiState.copy(
-                    search = if (results.isEmpty()) SearchUiState.Empty else SearchUiState.Success(results)
+                    search = if (results.isEmpty()) {
+                        SearchUiState.Empty
+                    } else {
+                        SearchUiState.Success(results)
+                    }
                 )
+            } catch (ex: CancellationException) {
+                throw ex
             } catch (ex: Exception) {
                 uiState = uiState.copy(
-                    search = SearchUiState.Error(ex.message ?: "Ошибка поиска")
+                    search = SearchUiState.Error(ex.message ?: "Error of search")
                 )
             }
         }
@@ -101,9 +133,7 @@ class CountriesViewModel(
 
     private fun showAllFromCacheOrLoad() {
         if (allCache.isNotEmpty()) {
-            uiState = uiState.copy(
-                search = SearchUiState.Success(allCache)
-            )
+            uiState = uiState.copy(search = SearchUiState.Success(allCache))
         } else {
             loadAll(forceNetwork = true)
         }
@@ -123,40 +153,69 @@ class CountriesViewModel(
                 val all = repository.getAll()
                 allCache = all
                 uiState = uiState.copy(
-                    search = if (all.isEmpty()) SearchUiState.Empty else SearchUiState.Success(all)
+                    search = if (all.isEmpty()) {
+                        SearchUiState.Empty
+                    } else {
+                        SearchUiState.Success(all)
+                    }
                 )
+            } catch (ex: CancellationException) {
+                throw ex
             } catch (ex: Exception) {
                 uiState = uiState.copy(
-                    search = SearchUiState.Error(ex.message ?: "Не удалось загрузить страны")
+                    search = SearchUiState.Error(ex.message ?: "Failed to load countries")
                 )
             }
         }
     }
 
     fun toggleFavourite(country: Country) {
-        val exists = uiState.favourites.any { it.code == country.code }
-        uiState = uiState.copy(
-            favourites = if (exists) uiState.favourites.filter { it.code != country.code }
-            else uiState.favourites + country
-        )
+        viewModelScope.launch {
+            val exists = uiState.favourites.any { it.code == country.code }
+            if (exists) {
+                repository.removeFavourite(country.code)
+            } else {
+                repository.addFavourite(country)
+            }
+        }
+    }
+
+    fun clearHistory() {
+        viewModelScope.launch {
+            repository.clearHistory()
+        }
     }
 
     fun loadDetails(code: String) {
         uiState = uiState.copy(details = DetailsUiState.Loading)
 
-        viewModelScope.launch {
+        detailsJob?.cancel()
+        detailsJob = viewModelScope.launch {
             try {
                 val details = repository.getDetails(code)
                 uiState = uiState.copy(details = DetailsUiState.Success(details))
+                repository.addToHistory(
+                    Country(
+                        code = details.code,
+                        name = details.name,
+                        capital = details.capital,
+                        region = details.region,
+                        flagUrl = details.flagUrl,
+                        population = details.population
+                    )
+                )
+            } catch (ex: CancellationException) {
+                throw ex
             } catch (ex: Exception) {
                 uiState = uiState.copy(
-                    details = DetailsUiState.Error(ex.message ?: "Не удалось загрузить детали")
+                    details = DetailsUiState.Error(ex.message ?: "Failed to load details")
                 )
             }
         }
     }
 
     fun clearSelection() {
+        detailsJob?.cancel()
         uiState = uiState.copy(details = DetailsUiState.Idle)
     }
 
@@ -164,5 +223,6 @@ class CountriesViewModel(
         super.onCleared()
         debounceJob?.cancel()
         requestJob?.cancel()
+        detailsJob?.cancel()
     }
 }
