@@ -6,6 +6,7 @@ import com.example.dz3.model.Country
 import com.example.dz3.model.CountryDetails
 import com.example.dz3.data.local.HistoryCountryEntity
 
+
 fun Country.toHistoryEntity(viewedAt: Long): HistoryCountryEntity {
     return HistoryCountryEntity(
         code = code,

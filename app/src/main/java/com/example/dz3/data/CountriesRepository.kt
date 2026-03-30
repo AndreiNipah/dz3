@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.example.dz3.data.local.HistoryCountryEntity
 
 @Singleton
 class CountriesRepository @Inject constructor(
@@ -18,16 +19,15 @@ class CountriesRepository @Inject constructor(
     private val favouriteDao: FavouriteCountryDao,
     private val historyDao: HistoryCountryDao
 ) {
+
     fun observeFavourites(): Flow<List<Country>> {
         return favouriteDao.observeAll().map { list ->
             list.map { it.toCountry() }
         }
     }
 
-    fun observeHistory(): Flow<List<Country>> {
-        return historyDao.observeAll().map { list ->
-            list.map { it.toCountry() }
-        }
+    fun observeHistory(): Flow<List<HistoryCountryEntity>> {
+        return historyDao.observeAll()
     }
 
     suspend fun addFavourite(country: Country) = withContext(Dispatchers.IO) {
@@ -53,9 +53,17 @@ class CountriesRepository @Inject constructor(
     }
 
     suspend fun searchByName(query: String): List<Country> = withContext(Dispatchers.IO) {
-        api.searchByName(name = query)
-            .mapNotNull { it.toCountryOrNull() }
-            .sortedBy { it.name }
+        try {
+            api.searchByName(name = query)
+                .mapNotNull { it.toCountryOrNull() }
+                .sortedBy { it.name }
+        } catch (e: retrofit2.HttpException) {
+            if (e.code() == 404) {
+                emptyList()
+            } else {
+                throw e
+            }
+        }
     }
 
     suspend fun getDetails(code: String): CountryDetails = withContext(Dispatchers.IO) {

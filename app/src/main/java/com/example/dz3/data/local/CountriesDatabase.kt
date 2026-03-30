@@ -8,7 +8,7 @@ import androidx.room.RoomDatabase
         FavouriteCountryEntity::class,
         HistoryCountryEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class CountriesDatabase : RoomDatabase() {

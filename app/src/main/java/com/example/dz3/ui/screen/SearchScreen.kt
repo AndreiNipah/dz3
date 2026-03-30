@@ -28,15 +28,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.example.dz3.model.Country
-import com.example.dz3.ui.viewmodel.CountriesUiState
+import com.example.dz3.ui.viewmodel.SearchScreenState
 import com.example.dz3.ui.viewmodel.SearchUiState
 import com.example.dz3.ui.widget.CountryCard
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.ui.platform.testTag
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
-    uiState: CountriesUiState,
+    uiState: SearchScreenState,
     onSearchChange: (String) -> Unit,
     onRefresh: () -> Unit,
     onOpenDetails: (Country) -> Unit,
@@ -75,7 +76,9 @@ fun SearchScreen(
                         value = uiState.query,
                         onValueChange = onSearchChange,
                         label = { Text("Search by name") },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("search_input"),
                         singleLine = true
                     )
                 }
@@ -85,7 +88,10 @@ fun SearchScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     val refreshEnabled = uiState.search !is SearchUiState.Loading
-                    Button(onClick = onRefresh, enabled = refreshEnabled) {
+                    Button(
+                        onClick = onRefresh,
+                        enabled = refreshEnabled,
+                        modifier = Modifier.testTag("refresh_button")) {
                         Text("Refresh")
                     }
                 }
