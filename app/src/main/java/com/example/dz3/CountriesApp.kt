@@ -9,14 +9,15 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.dz3.ui.screen.CountryDetailsScreen
 import com.example.dz3.ui.screen.FavouritesScreen
-import com.example.dz3.ui.screen.SearchScreen
-import com.example.dz3.ui.viewmodel.CountriesViewModel
 import com.example.dz3.ui.screen.HistoryScreen
+import com.example.dz3.ui.screen.SearchScreen
+import com.example.dz3.ui.viewmodel.CountryDetailsViewModel
+import com.example.dz3.ui.viewmodel.HistoryViewModel
+import com.example.dz3.ui.viewmodel.SearchViewModel
 
 sealed class CountriesRoute(val route: String) {
     data object Search : CountriesRoute("search")
     data object Favourites : CountriesRoute("favourites")
-
     data object History : CountriesRoute("history")
     data object Detail : CountriesRoute("detail/{code}") {
         const val ARG_CODE = "code"
@@ -27,10 +28,11 @@ sealed class CountriesRoute(val route: String) {
 @Composable
 fun CountriesApp() {
     val nav = rememberNavController()
-    val vm: CountriesViewModel = hiltViewModel()
 
     NavHost(navController = nav, startDestination = CountriesRoute.Search.route) {
         composable(CountriesRoute.Search.route) {
+            val vm: SearchViewModel = hiltViewModel()
+
             SearchScreen(
                 uiState = vm.uiState,
                 onSearchChange = vm::updateSearchQuery,
@@ -45,6 +47,8 @@ fun CountriesApp() {
         }
 
         composable(CountriesRoute.Favourites.route) {
+            val vm: SearchViewModel = hiltViewModel()
+
             FavouritesScreen(
                 uiState = vm.uiState,
                 onOpenDetails = { country ->
@@ -56,6 +60,8 @@ fun CountriesApp() {
         }
 
         composable(CountriesRoute.History.route) {
+            val vm: HistoryViewModel = hiltViewModel()
+
             HistoryScreen(
                 uiState = vm.uiState,
                 onOpenDetails = { country ->
@@ -73,6 +79,8 @@ fun CountriesApp() {
                 type = NavType.StringType
             })
         ) { backStackEntry ->
+            val vm: CountryDetailsViewModel = hiltViewModel()
+
             val code = backStackEntry.arguments
                 ?.getString(CountriesRoute.Detail.ARG_CODE)
                 .orEmpty()

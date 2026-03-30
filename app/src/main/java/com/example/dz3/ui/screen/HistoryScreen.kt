@@ -21,13 +21,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.dz3.model.Country
-import com.example.dz3.ui.viewmodel.CountriesUiState
+import com.example.dz3.ui.viewmodel.HistoryScreenState
 import com.example.dz3.ui.widget.CountryCard
+import com.example.dz3.data.local.HistoryCountryEntity
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
-    uiState: CountriesUiState,
+    uiState: HistoryScreenState,
     onOpenDetails: (Country) -> Unit,
     onToggleFavourite: (Country) -> Unit,
     onClearHistory: () -> Unit,
@@ -69,12 +71,21 @@ fun HistoryScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(uiState.history, key = { it.code }) { c ->
+                items(uiState.history, key = { it.id }) { item ->
+                    val country = Country(
+                        code = item.code,
+                        name = item.name,
+                        capital = item.capital,
+                        region = item.region,
+                        flagUrl = item.flagUrl,
+                        population = item.population
+                    )
+
                     CountryCard(
-                        country = c,
-                        isFavourite = uiState.favourites.any { it.code == c.code },
-                        onClick = { onOpenDetails(c) },
-                        onToggleFavourite = { onToggleFavourite(c) }
+                        country = country,
+                        isFavourite = uiState.favourites.any { it.code == item.code },
+                        onClick = { onOpenDetails(country) },
+                        onToggleFavourite = { onToggleFavourite(country) }
                     )
                 }
             }

@@ -24,13 +24,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.dz3.model.Country
-import com.example.dz3.ui.viewmodel.CountriesUiState
+import com.example.dz3.ui.viewmodel.SearchScreenState
 import com.example.dz3.ui.widget.CountryCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FavouritesScreen(
-    uiState: CountriesUiState,
+    uiState: SearchScreenState,
     onOpenDetails: (Country) -> Unit,
     onToggleFavourite: (Country) -> Unit,
     onBack: () -> Unit,

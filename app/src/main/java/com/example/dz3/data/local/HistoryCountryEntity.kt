@@ -5,7 +5,8 @@ import androidx.room.PrimaryKey
 
 @Entity(tableName = "history_countries")
 data class HistoryCountryEntity(
-    @PrimaryKey val code: String,
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val code: String,
     val name: String,
     val capital: String,
     val region: String,

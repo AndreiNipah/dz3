@@ -23,7 +23,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.dz3.model.Country
-import com.example.dz3.ui.viewmodel.CountriesUiState
+import com.example.dz3.ui.viewmodel.CountryDetailsScreenState
 import com.example.dz3.ui.viewmodel.DetailsUiState
 import com.example.dz3.ui.widget.CountryContent
 
@@ -31,7 +31,7 @@ import com.example.dz3.ui.widget.CountryContent
 @Composable
 fun CountryDetailsScreen(
     code: String,
-    uiState: CountriesUiState,
+    uiState: CountryDetailsScreenState,
     onLoad: () -> Unit,
     onBack: () -> Unit,
     onToggleFavourite: (Country) -> Unit,
