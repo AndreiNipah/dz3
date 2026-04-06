@@ -1,18 +1,27 @@
 package com.example.dz3.ui.viewmodel
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.dz3.data.CountriesRepository
 import com.example.dz3.model.Country
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 
 sealed interface SearchUiState {
     data object Loading : SearchUiState
@@ -23,10 +32,12 @@ sealed interface SearchUiState {
 
 data class SearchScreenState(
     val query: String = "",
+    val selectedFilter: SearchFilter = SearchFilter.ALL,
     val search: SearchUiState = SearchUiState.Loading,
     val favourites: List<Country> = emptyList()
 )
 
+@OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class SearchViewModel @Inject constructor(
     private val repository: CountriesRepository
@@ -37,122 +48,91 @@ class SearchViewModel @Inject constructor(
         private const val MIN_QUERY_LEN = 2
     }
 
-    var uiState by mutableStateOf(SearchScreenState())
-        private set
+    private val queryFlow = MutableStateFlow("")
+    private val filterFlow = MutableStateFlow(SearchFilter.ALL)
+    private val refreshFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
-    private var allCache: List<Country> = emptyList()
-    private var debounceJob: Job? = null
-    private var requestJob: Job? = null
+    private val favouritesFlow = repository.observeFavourites()
 
-    init {
-        observeFavourites()
-        loadAll(forceNetwork = true)
-    }
+    private val baseCountriesFlow = combine(
+        queryFlow
+            .debounce(DEBOUNCE_MS)
+            .map { it.trim() }
+            .distinctUntilChanged(),
+        refreshFlow.onStart { emit(Unit) }
+    ) { query, _ -> query }
+        .flatMapLatest { query ->
+            flow<SearchUiState> {
+                emit(SearchUiState.Loading)
 
-    private fun observeFavourites() {
-        viewModelScope.launch {
-            repository.observeFavourites().collect { favourites ->
-                uiState = uiState.copy(favourites = favourites)
+                val items = when {
+                    query.isBlank() -> repository.getAll()
+                    query.length < MIN_QUERY_LEN -> {
+                        emit(SearchUiState.Empty)
+                        return@flow
+                    }
+                    else -> repository.searchByName(query)
+                }
+
+                emit(
+                    if (items.isEmpty()) {
+                        SearchUiState.Empty
+                    } else {
+                        SearchUiState.Success(items)
+                    }
+                )
+            }.catch { ex ->
+                emit(SearchUiState.Error(ex.message ?: "Failed to load countries"))
             }
         }
-    }
+
+    val uiState: StateFlow<SearchScreenState> = combine(
+        queryFlow,
+        filterFlow,
+        favouritesFlow,
+        baseCountriesFlow
+    ) { query, filter, favourites, baseState ->
+
+        val filteredState = when (baseState) {
+            is SearchUiState.Success -> {
+                val filteredItems = applyFilter(baseState.items, filter)
+                if (filteredItems.isEmpty()) {
+                    SearchUiState.Empty
+                } else {
+                    SearchUiState.Success(filteredItems)
+                }
+            }
+
+            else -> baseState
+        }
+
+        SearchScreenState(
+            query = query,
+            selectedFilter = filter,
+            search = filteredState,
+            favourites = favourites
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = SearchScreenState()
+    )
 
     fun updateSearchQuery(query: String) {
-        uiState = uiState.copy(query = query)
+        queryFlow.value = query
+    }
 
-        debounceJob?.cancel()
-        debounceJob = viewModelScope.launch {
-            delay(DEBOUNCE_MS)
-            searchInternal()
-        }
+    fun updateFilter(filter: SearchFilter) {
+        filterFlow.value = filter
     }
 
     fun refresh() {
-        val q = uiState.query.trim()
-        if (q.isBlank()) {
-            loadAll(forceNetwork = true)
-        } else {
-            searchInternal(forceQuery = q)
-        }
-    }
-
-    private fun searchInternal(forceQuery: String? = null) {
-        val q = (forceQuery ?: uiState.query).trim()
-
-        if (q.isBlank()) {
-            showAllFromCacheOrLoad()
-            return
-        }
-
-        if (q.length < MIN_QUERY_LEN) {
-            uiState = uiState.copy(search = SearchUiState.Empty)
-            return
-        }
-
-        uiState = uiState.copy(search = SearchUiState.Loading)
-
-        requestJob?.cancel()
-        requestJob = viewModelScope.launch {
-            try {
-                val results = repository.searchByName(q)
-                uiState = uiState.copy(
-                    search = if (results.isEmpty()) {
-                        SearchUiState.Empty
-                    } else {
-                        SearchUiState.Success(results)
-                    }
-                )
-            } catch (ex: CancellationException) {
-                throw ex
-            } catch (ex: Exception) {
-                uiState = uiState.copy(
-                    search = SearchUiState.Error(ex.message ?: "Error of search")
-                )
-            }
-        }
-    }
-
-    private fun showAllFromCacheOrLoad() {
-        if (allCache.isNotEmpty()) {
-            uiState = uiState.copy(search = SearchUiState.Success(allCache))
-        } else {
-            loadAll(forceNetwork = true)
-        }
-    }
-
-    private fun loadAll(forceNetwork: Boolean) {
-        if (!forceNetwork && allCache.isNotEmpty()) {
-            uiState = uiState.copy(search = SearchUiState.Success(allCache))
-            return
-        }
-
-        uiState = uiState.copy(search = SearchUiState.Loading)
-
-        requestJob?.cancel()
-        requestJob = viewModelScope.launch {
-            try {
-                val all = repository.getAll()
-                allCache = all
-                uiState = uiState.copy(
-                    search = if (all.isEmpty()) {
-                        SearchUiState.Empty
-                    } else {
-                        SearchUiState.Success(all)
-                    }
-                )
-            } catch (ex: CancellationException) {
-                throw ex
-            } catch (ex: Exception) {
-                uiState = uiState.copy(
-                    search = SearchUiState.Error(ex.message ?: "Failed to load countries")
-                )
-            }
-        }
+        refreshFlow.tryEmit(Unit)
     }
 
     fun toggleFavourite(country: Country) {
         viewModelScope.launch {
-            val exists = uiState.favourites.any { it.code == country.code }
+            val exists = uiState.value.favourites.any { it.code == country.code }
             if (exists) {
                 repository.removeFavourite(country.code)
             } else {
@@ -161,9 +141,17 @@ class SearchViewModel @Inject constructor(
         }
     }
 
-    override fun onCleared() {
-        super.onCleared()
-        debounceJob?.cancel()
-        requestJob?.cancel()
+    private fun applyFilter(
+        items: List<Country>,
+        filter: SearchFilter
+    ): List<Country> {
+        return when (filter) {
+            SearchFilter.ALL -> items
+            SearchFilter.AFRICA -> items.filter { it.region.equals("Africa", ignoreCase = true) }
+            SearchFilter.AMERICAS -> items.filter { it.region.equals("Americas", ignoreCase = true) }
+            SearchFilter.ASIA -> items.filter { it.region.equals("Asia", ignoreCase = true) }
+            SearchFilter.EUROPE -> items.filter { it.region.equals("Europe", ignoreCase = true) }
+            SearchFilter.OCEANIA -> items.filter { it.region.equals("Oceania", ignoreCase = true) }
+        }
     }
 }

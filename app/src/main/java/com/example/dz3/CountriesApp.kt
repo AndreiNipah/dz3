@@ -1,6 +1,8 @@
 package com.example.dz3
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -32,9 +34,10 @@ fun CountriesApp() {
     NavHost(navController = nav, startDestination = CountriesRoute.Search.route) {
         composable(CountriesRoute.Search.route) {
             val vm: SearchViewModel = hiltViewModel()
+            val uiState by vm.uiState.collectAsState()
 
             SearchScreen(
-                uiState = vm.uiState,
+                uiState = uiState,
                 onSearchChange = vm::updateSearchQuery,
                 onRefresh = vm::refresh,
                 onOpenDetails = { country ->
@@ -42,15 +45,17 @@ fun CountriesApp() {
                 },
                 onOpenFavourites = { nav.navigate(CountriesRoute.Favourites.route) },
                 onOpenHistory = { nav.navigate(CountriesRoute.History.route) },
-                onToggleFavourite = vm::toggleFavourite
+                onToggleFavourite = vm::toggleFavourite,
+                onFilterChange = vm::updateFilter
             )
         }
 
         composable(CountriesRoute.Favourites.route) {
             val vm: SearchViewModel = hiltViewModel()
+            val uiState by vm.uiState.collectAsState()
 
             FavouritesScreen(
-                uiState = vm.uiState,
+                uiState = uiState,
                 onOpenDetails = { country ->
                     nav.navigate(CountriesRoute.Detail.createRoute(country.code))
                 },

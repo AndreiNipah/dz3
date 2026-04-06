@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.dp
 import com.example.dz3.model.Country
 import com.example.dz3.ui.viewmodel.HistoryScreenState
 import com.example.dz3.ui.widget.CountryCard
-import com.example.dz3.data.local.HistoryCountryEntity
 
 
 @OptIn(ExperimentalMaterial3Api::class)
